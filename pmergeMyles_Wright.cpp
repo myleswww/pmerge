@@ -94,11 +94,14 @@ void mergeSort(int * A, ){ //mergeSort function, basically the same as in smerge
     mergeSort(A, );
     mergeSort(A, );
     smerge();
-
-
 }
 
-
+void printArray(int * a, int size){
+    for(int i = 0; i < size; i++){
+        cout << a[i] << " ";
+    }
+    cout << "\n";
+}
 
 
 int main (int argc, char * argv[]) {
@@ -178,13 +181,13 @@ int main (int argc, char * argv[]) {
                 int log = log2(i);
                 rank(b, SRANKA, a[log], log); //pass in the array we are looking through, the rankarrayA, the actual value we are looking for(every lognth element cause why would we want to do every fucking one), and the index value of log(i)
                 rank(a, SRANKB, b[log], log); //rank of b in a
-
-                MPI_Send{}
-                
-
+                i++;
+                MPI_Send(i, 1, MPI_INT, (my_rank + 1), 0, MPI_COMM_WORLD);
             }
         }
     }
+
+    
     /*
     FIRST: Gotta sort both arrays.
     SECOND: MERGE THE FUCKERS IN PARALLEL
