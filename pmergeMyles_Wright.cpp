@@ -123,18 +123,19 @@ int main (int argc, char * argv[]) {
 	// Find out the number of processes!
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 	
+
+
 	// THE REAL PROGRAM IS HERE
     if(my_rank == 0){ //create and broadcast the array, array creation taken from mergesortMylesWright.cpp
-        cout << "How large is the first array hoe?\n"; 
+        cout << "How large is the array hoe?\n"; 
         int size = 0; //size of array
         cin >> size; //get input
-        int * a = new (nothrow) int [size]; //assign size in array a decclaration
-                                             //nothrow will not throw if declaration fails :)
+        int * input = new int[size];
+        int * a = &input[0]; //MYLES: input array like in project description... sigh.
+
+          
         int * RANKA = new int[size];
-        cout << "How large is the second array?";
-        int size_2 = 0;
-        cin >> size_2;
-        int * b = new int [size_2];
+        int * b = &input[50];
         int * RANKB = new int[size_2];
 
         if(a==nullptr){ //if there is a memory allocation failure, deal with it
@@ -168,6 +169,12 @@ int main (int argc, char * argv[]) {
         while(i<p){
             if(i==my_rank){
                 //recieve all of the goods ;)
+                int size = 0;
+                int size_2 = 0;
+                int * a = new int[size];
+                int * b = new int[size_2];
+                int * SRANKA = new int[size];
+                int * SRANKB = new int[size_2];
                 MPI_Recv(a, size, 0, MPI_INT, 0, MPI_COMM_WORLD); //the size variable probably wont work
                 MPI_Recv(b, size_2, 0, MPI_INT, 0, MPI_COMM_WORLD);
                 MPI_Recv(SRANKA, size, 0, MPI_INT, 0, MPI_COMM_WORLD);
@@ -182,12 +189,17 @@ int main (int argc, char * argv[]) {
                 rank(b, SRANKA, a[log], log); //pass in the array we are looking through, the rankarrayA, the actual value we are looking for(every lognth element cause why would we want to do every fucking one), and the index value of log(i)
                 rank(a, SRANKB, b[log], log); //rank of b in a
                 i++;
-                MPI_Send(i, 1, MPI_INT, (my_rank + 1), 0, MPI_COMM_WORLD);
+                MPI_Send(i, 1, MPI_INT, (my_rank + 1), 0, MPI_COMM_WORLD);\
+                printArray(SRANKA, size);
+                printArray(SRANKB, size_2);
             }
         }
     }
-
-    
+    //test print rankA and rankB
+    if(my_rank == 0){
+    printArray(SRANKA, size);
+    printArray(SRANKB, size_2);
+    }
     /*
     FIRST: Gotta sort both arrays.
     SECOND: MERGE THE FUCKERS IN PARALLEL
