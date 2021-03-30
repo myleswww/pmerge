@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctime>
+#include <math.h>
 #include "mpi.h" // message passing interface
 using namespace std;
 
@@ -20,10 +21,10 @@ int bSearch(int * arr, int x, int p, int r){ //bSearch function
             return m;
         }
         if(arr[m] > x){
-            return bSearch(arr, p, m-1, num);
+            return bSearch(arr, x, p, m-1);
         }
         if(arr[m] < x){
-            return bSearch(arr, m+1, r, num);
+            return bSearch(arr, x, m+1, r);
         }
         if(x < arr[m] && x > arr[m-1]){
             //x is inbetween these two numbers but not in arr
@@ -90,10 +91,10 @@ void smerge(int * a, int first, int lasta, int lastb, int * output = NULL){ //sm
 }
 
 
-void mergeSort(int * A, ){ //mergeSort function, basically the same as in smerge
-    mergeSort(A, );
-    mergeSort(A, );
-    smerge();
+void mergeSort(int * A){ //mergeSort function, basically the same as in smerge
+   // mergeSort(A);
+   // mergeSort(A);
+   // smerge();
 }
 
 void printArray(int * a, int size){
@@ -124,89 +125,49 @@ int main (int argc, char * argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 	
 
+    int * input = NULL;
+    int * a = NULL;
+    int * b = NULL;                //MYLES: Create global arrays
+    int * RANKA = NULL;
+    int * RANKB = NULL;
+    int * WIN = NULL;
+    int size = 0;
 
 	// THE REAL PROGRAM IS HERE
-    if(my_rank == 0){ //create and broadcast the array, array creation taken from mergesortMylesWright.cpp
-        cout << "How large is the array hoe?\n"; 
-        int size = 0; //size of array
-        cin >> size; //get input
-        int * input = new int[size];
-        int * a = &input[0]; //MYLES: input array like in project description... sigh.
+    if(my_rank == 0){ //MYLES: create and broadcast the array
+        cout << "What in gods name is the size of this thing?";
 
-          
-        int * RANKA = new int[size];
-        int * b = &input[50];
-        int * RANKB = new int[size_2];
+        cin >> size;
+        input = new int[size];
 
-        if(a==nullptr){ //if there is a memory allocation failure, deal with it
-            cout << "OH NO ABORT ABORT MISSON WE ARE GOING DOWN HOLY SHIT I HAVE TWO KIDS IT CANT END LIKE-";
-            exit(EXIT_FAILURE);
-        }
+        int size_div = size/2;
+        int size_log = (size_div)/log2(size_div);
 
-        srand(71911); //random number gen
-        int x = 1000000; //prompt said to use this number
-
-        for(int i = 0; i < size; i++){
-            a[i] = rand() % 8; // :)
-        }
-        srand(time());
-        for(int i = 0; i < size; i++){
-            b[i] = (rand() % 500)+1; // :) between 0 and 500
-        }
+        a = &input[0];
+        b = &input[size_div]; //MYLES: cut this hoe in half
         
-        MPI_Bcast(b, size_2, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(a, size, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(SRANKA, size, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(SRANKB, size_2, MPI_INT, 0, MPI_COMM_WORLD);
-        int i = 1;
-        MPI_Send( i,  1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+        RANKA = new int[size_log]; //correct?
+        RANKB = new int[size_log]; //please be correct
         
 
+        //please sort a and b before broadcast
+        
+
+        /*MPI_Bcast(a, size/2, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(b, size/2, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(RANKA, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(RANKB, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
+        */
+
+        
     }
-    else{
-        MPI_Recv(i, 1, MPI_INT, (my_rank-1), 0, MPI_COMM_WORLD);
 
-        while(i<p){
-            if(i==my_rank){
-                //recieve all of the goods ;)
-                int size = 0;
-                int size_2 = 0;
-                int * a = new int[size];
-                int * b = new int[size_2];
-                int * SRANKA = new int[size];
-                int * SRANKB = new int[size_2];
-                MPI_Recv(a, size, 0, MPI_INT, 0, MPI_COMM_WORLD); //the size variable probably wont work
-                MPI_Recv(b, size_2, 0, MPI_INT, 0, MPI_COMM_WORLD);
-                MPI_Recv(SRANKA, size, 0, MPI_INT, 0, MPI_COMM_WORLD);
-                MPI_Recv(SRANKB, size_2, 0, MPI_INT, 0, MPI_COMM_WORLD);
+    int * recv = new int[1]; //receiving buffer
+    int s = 0;
+    MPI_Scatter(a, size/p, MPI_INT, recv, 1, MPI_INT, 0, MPI_COMM_WORLD); //scatter the arrays
+    MPI_Scatter(b, size/p, MPI_INT, recv, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    cout << "Process " << my_rank << "has data" << recv[0] << "\n"; //print test
 
-                //send to rank function
-                //give element at logi
-
-                //rank of a in b
-                //define the element that were looking for
-                int log = log2(i);
-                rank(b, SRANKA, a[log], log); //pass in the array we are looking through, the rankarrayA, the actual value we are looking for(every lognth element cause why would we want to do every fucking one), and the index value of log(i)
-                rank(a, SRANKB, b[log], log); //rank of b in a
-                i++;
-                MPI_Send(i, 1, MPI_INT, (my_rank + 1), 0, MPI_COMM_WORLD);\
-                printArray(SRANKA, size);
-                printArray(SRANKB, size_2);
-            }
-        }
-    }
-    //test print rankA and rankB
-    if(my_rank == 0){
-    printArray(SRANKA, size);
-    printArray(SRANKB, size_2);
-    }
-    /*
-    FIRST: Gotta sort both arrays.
-    SECOND: MERGE THE FUCKERS IN PARALLEL
-    THIRD: ???
-    FOURTH: PROFIT
-
-    */
 	// Shut down MPI
 	MPI_Finalize();
 
