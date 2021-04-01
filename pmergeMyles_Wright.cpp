@@ -125,7 +125,7 @@ int main (int argc, char * argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 	
 
-    int * input; int * a; int * b; int * RANKA; int * RANKB; int * WIN; int * recv;              //MYLES: Create global arrays
+    int * input; int * a; int * b; int * RANKA; int * RANKB; int * WIN; int * recvA; int * recvB;              //MYLES: Create global arrays
     
     int size;
     
@@ -181,13 +181,15 @@ int main (int argc, char * argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     
     int recv_size = (size/2)/p;
-    recv = new int[recv_size];
-    MPI_Scatter(a, recv_size, MPI_INT, recv, recv_size, MPI_INT, 0, MPI_COMM_WORLD); //scatter the arrays
-    //MPI_Scatter(b, size/p, MPI_INT, recv, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    cout << "Process " << my_rank << " has data ";
-    printArray(recv, recv_size); //print test
+    recvA = new int[recv_size];
+    recvB = new int[recv_size];
+    MPI_Scatter(a, recv_size, MPI_INT, recvA, recv_size, MPI_INT, 0, MPI_COMM_WORLD); //scatter the arrays
+    MPI_Scatter(b, recv_size, MPI_INT, recvB, recv_size, MPI_INT, 0, MPI_COMM_WORLD);
+    cout << "Process " << my_rank << " Array A: ";
+    printArray(recvA, recv_size); //print test
     
-    
+    cout << "Process " << my_rank << " Array B: ";
+    printArray(recvB, recv_size); //print test
 
 	// Shut down MPI
 	MPI_Finalize();
