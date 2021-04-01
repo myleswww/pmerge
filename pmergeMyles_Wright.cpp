@@ -125,48 +125,69 @@ int main (int argc, char * argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 	
 
-    int * input = NULL;
-    int * a = NULL;
-    int * b = NULL;                //MYLES: Create global arrays
-    int * RANKA = NULL;
-    int * RANKB = NULL;
-    int * WIN = NULL;
-    int size = 0;
+    int * input; int * a; int * b; int * RANKA; int * RANKB; int * WIN; int * recv;              //MYLES: Create global arrays
+    
+    int size;
+    
 
 	// THE REAL PROGRAM IS HERE
     if(my_rank == 0){ //MYLES: create and broadcast the array
-        cout << "What in gods name is the size of this thing?";
+        cout << "What in gods name is the size of this thing?\n";
 
         cin >> size;
         input = new int[size];
 
-        int size_div = size/2;
-        int size_log = (size_div)/log2(size_div);
 
+
+        for(int i = 0; i < size; i++){
+            input[i] = rand() %(500-0+1)+0; // :)
+        }
+
+
+        int size_div = size/2;
+        double size_log = int(ceil((size_div)/log2(size_div)));
+        
         a = &input[0];
         b = &input[size_div]; //MYLES: cut this hoe in half
         
-        RANKA = new int[size_log]; //correct?
-        RANKB = new int[size_log]; //please be correct
+        //RANKA = new int[size_log]; //correct?
+        //RANKB = new int[size_log]; //please be correct
+        
+
+        cout << "Array Input: ";
+        printArray(input, size);
+        cout << "\nArray size: " << size << endl;
+        cout << "Half of the array size: " << size_div << endl;
+        cout << "log of half of the size: " << size_log << endl;
+        
+        cout << "Array A: ";
+        printArray(a, size_div);
+        cout << "Array B: ";
+        printArray(b, (size-size_div));
         
 
         //please sort a and b before broadcast
         
-
-        /*MPI_Bcast(a, size/2, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(b, size/2, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(RANKA, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(RANKB, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
-        */
+        //MPI_Bcast(a, size/2, MPI_INT, 0, MPI_COMM_WORLD);
+        //MPI_Bcast(b, size/2, MPI_INT, 0, MPI_COMM_WORLD);
+        //MPI_Bcast(RANKA, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
+        //MPI_Bcast(RANKB, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
+        
 
         
     }
-
-    int * recv = new int[1]; //receiving buffer
-    int s = 0;
-    MPI_Scatter(a, size/p, MPI_INT, recv, 1, MPI_INT, 0, MPI_COMM_WORLD); //scatter the arrays
-    MPI_Scatter(b, size/p, MPI_INT, recv, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    cout << "Process " << my_rank << "has data" << recv[0] << "\n"; //print test
+    
+    MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    int recv_size = (size/2)/p;
+    recv = new int[recv_size];
+    MPI_Scatter(a, recv_size, MPI_INT, recv, recv_size, MPI_INT, 0, MPI_COMM_WORLD); //scatter the arrays
+    //MPI_Scatter(b, size/p, MPI_INT, recv, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    cout << "Process " << my_rank << " has data ";
+    printArray(recv, recv_size); //print test
+    
+    
 
 	// Shut down MPI
 	MPI_Finalize();
