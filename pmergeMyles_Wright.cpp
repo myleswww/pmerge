@@ -14,19 +14,19 @@ using namespace std;
 // mpicxx -o blah file.cpp
 // mpirun -q -np 32 blah
 
-int bSearch(int * arr, int x, int p, int r){ //bSearch function
+int srank(int * arr, int x, int p, int r){ //bSearch function
     if(p <= r){                                //x is what we are searching for //RANK is the bSearch array  //p is the partition                                    
         int m = (p+r)/2;    //index of middle element   //r is the index of the last element of the array
         if(arr[m] == x){
             return m;
         }
-        if(arr[m] > x){
-            return bSearch(arr, x, p, m-1);
+        else if(arr[m] > x){
+            return srank(arr, x, p, m-1);
         }
-        if(arr[m] < x){
-            return bSearch(arr, x, m+1, r);
+        else if(arr[m] < x){
+            return srank(arr, x, m+1, r);
         }
-        if(x < arr[m] && x > arr[m-1]){
+        else if(x < arr[m] && x > arr[m-1]){
             //x is inbetween these two numbers but not in arr
             //the point is that the rank is still noted, it doesn't have to be inside of arr, we just need to know where it fits in.
             return m-1;
@@ -34,14 +34,6 @@ int bSearch(int * arr, int x, int p, int r){ //bSearch function
     }
     return -1; //there was a major issue                      
 
-}
-
-
-void rank(int * a, int * RANK, int x, int i){ //rank function, uses binary search. i is the index value of x
-    int rank = 0; //rank value
-    int r = sizeof(a) - 1;
-    rank = bSearch(a, x, 0, r); //using the array, what we are looking for, 0 as p, and the last index as r
-    RANK[i] = rank;
 }
 
 void smerge(int * a, int first, int lasta, int lastb, int * output = NULL){ //smerge function
@@ -91,10 +83,14 @@ void smerge(int * a, int first, int lasta, int lastb, int * output = NULL){ //sm
 }
 
 
-void mergeSort(int * A){ //mergeSort function, basically the same as in smerge
-   // mergeSort(A);
-   // mergeSort(A);
-   // smerge();
+void mergesort(int * a, int first, int last){ //mergesort. yee yee
+    if(first >= last){
+        return;
+    }
+    int p = first + (last-first)/2;
+    mergesort(a, first, p);
+    mergesort(a, p+1, last);
+    smerge(a, first, p, last);
 }
 
 void printArray(int * a, int size){
@@ -125,7 +121,10 @@ int main (int argc, char * argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 	
 
-    int * input; int * a; int * b; int * RANKA; int * RANKB; int * WIN; int * recvA; int * recvB;              //MYLES: Create global arrays
+    int * input; int * a; int * b; 
+    int RANKA;
+    int RANKB; 
+    int * WIN; int * recvA; int * recvB;              //MYLES: Create global arrays
     
     int size;
     
@@ -133,48 +132,14 @@ int main (int argc, char * argv[]) {
 	// THE REAL PROGRAM IS HERE
     if(my_rank == 0){ //MYLES: create and broadcast the array
         cout << "What in gods name is the size of this thing?\n";
-
         cin >> size;
         input = new int[size];
-
-
-
         for(int i = 0; i < size; i++){
             input[i] = rand() %(500-0+1)+0; // :)
         }
-
-
         int size_div = size/2;
-        double size_log = int(ceil((size_div)/log2(size_div)));
-        
         a = &input[0];
         b = &input[size_div]; //MYLES: cut this hoe in half
-        
-        //RANKA = new int[size_log]; //correct?
-        //RANKB = new int[size_log]; //please be correct
-        
-
-        cout << "Array Input: ";
-        printArray(input, size);
-        cout << "\nArray size: " << size << endl;
-        cout << "Half of the array size: " << size_div << endl;
-        cout << "log of half of the size: " << size_log << endl;
-        
-        cout << "Array A: ";
-        printArray(a, size_div);
-        cout << "Array B: ";
-        printArray(b, (size-size_div));
-        
-
-        //please sort a and b before broadcast
-        
-        //MPI_Bcast(a, size/2, MPI_INT, 0, MPI_COMM_WORLD);
-        //MPI_Bcast(b, size/2, MPI_INT, 0, MPI_COMM_WORLD);
-        //MPI_Bcast(RANKA, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
-        //MPI_Bcast(RANKB, (size/2)/log2(size/2), MPI_INT, 0, MPI_COMM_WORLD);
-        
-
-        
     }
     
     MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -185,11 +150,23 @@ int main (int argc, char * argv[]) {
     recvB = new int[recv_size];
     MPI_Scatter(a, recv_size, MPI_INT, recvA, recv_size, MPI_INT, 0, MPI_COMM_WORLD); //scatter the arrays
     MPI_Scatter(b, recv_size, MPI_INT, recvB, recv_size, MPI_INT, 0, MPI_COMM_WORLD);
+    
+    mergesort(recvA, 0, (recv_size-1));
+    mergesort(recvB, 0, (recv_size-1));
+
     cout << "Process " << my_rank << " Array A: ";
     printArray(recvA, recv_size); //print test
     
     cout << "Process " << my_rank << " Array B: ";
     printArray(recvB, recv_size); //print test
+
+    RANKA = 0;
+    RANKB = 0;
+    RANKA = srank(b, recvA[0], 0, (recv_size-1));
+    RANKB = srank(a, recvB[0], 0, (recv_size-1));
+
+    cout << "Process " << my_rank << " RANKA: " << RANKA;
+    cout << "Process " << my_rank << " RANKB: " << RANKB;
 
 	// Shut down MPI
 	MPI_Finalize();
