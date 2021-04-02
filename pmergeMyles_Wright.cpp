@@ -26,11 +26,10 @@ int srank(int * arr, int x, int p, int r){ //bSearch function
         else if(arr[m] < x){
             return srank(arr, x, m+1, r);
         }
-        else if(x < arr[m] && x > arr[m-1]){
-            //x is inbetween these two numbers but not in arr
-            //the point is that the rank is still noted, it doesn't have to be inside of arr, we just need to know where it fits in.
-            return m-1;
-        }
+        
+    }
+    else{
+        return p;
     }
     return -1; //there was a major issue                      
 
