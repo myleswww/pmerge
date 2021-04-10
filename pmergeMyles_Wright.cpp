@@ -82,15 +82,17 @@ void smerge(int * a, int first, int lasta, int lastb, int * output = NULL){ //sm
 }
 
 
-void mergesort(int * a, int first, int last){ //mergesort. yee yee
+void s_mergesort(int * a, int first, int last){ //mergesort. yee yee
     if(first >= last){
         return;
     }
     int p = first + (last-first)/2;
-    mergesort(a, first, p);
-    mergesort(a, p+1, last);
+    s_mergesort(a, first, p);
+    s_mergesort(a, p+1, last);
     smerge(a, first, p, last);
 }
+
+
 
 void printArray(int * a, int size){
     for(int i = 0; i < size; i++){
@@ -99,8 +101,31 @@ void printArray(int * a, int size){
     cout << "\n";
 }
 
+void clear(int*a, int n){
+    for(int i = 0; i<n; i++){
+        a[i] = 0;
+    }
+}
 
-int main (int argc, char * argv[]) {
+void merge_sort(int*a, int*b, int n, int my_rank, int p){
+    //We have made a base for arrays less than 4 just use insertion because its better, could use another sort but I saw this one in a sort visualizer video on youtube and thought it looked cool so why not?
+    if(n==4){
+        for(int i = 0; i < n; i++){
+            b[i] = a[i];
+        }
+        insertionsort(b, n);
+    }
+    else{
+        int*c = new int[n]; //basically we are creating a temp array to store the two halfs then run mergesort recursively
+        clear(c,n);
+        merge_sort(&a[0], &c[0], n/2, my_rank, p);
+        merge_sort(&a[n/2], &c[n/2], n - n/2, my_rank, p);
+        pmerge(&c[0], &c[n/2], &b[0], n, my_rank, p);
+    }
+}
+
+
+int main(int argc, char * argv[]) {
 
 	int my_rank;			// my CPU number for this process
 	int p;					// number of CPUs that we have
@@ -126,7 +151,7 @@ int main (int argc, char * argv[]) {
     int * WIN; int * recvA; int * recvB;              //MYLES: Create global arrays
     
     int size;
-    
+    bool results = true;
 
 	// THE REAL PROGRAM IS HERE
     if(my_rank == 0){ //MYLES: create and broadcast the array
@@ -139,33 +164,22 @@ int main (int argc, char * argv[]) {
         int size_div = size/2;
         a = &input[0];
         b = &input[size_div]; //MYLES: cut this hoe in half
+
+        
     }
     
     MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(a, (size/2), MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(b, size/2, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
     
-    int recv_size = (size/2)/p;
-    recvA = new int[recv_size];
-    recvB = new int[recv_size];
-    MPI_Scatter(a, recv_size, MPI_INT, recvA, recv_size, MPI_INT, 0, MPI_COMM_WORLD); //scatter the arrays
-    MPI_Scatter(b, recv_size, MPI_INT, recvB, recv_size, MPI_INT, 0, MPI_COMM_WORLD);
-    
-    mergesort(recvA, 0, (recv_size-1));
-    mergesort(recvB, 0, (recv_size-1));
-
-    cout << "Process " << my_rank << " Array A: ";
-    printArray(recvA, recv_size); //print test
-    
-    cout << "Process " << my_rank << " Array B: ";
-    printArray(recvB, recv_size); //print test
-
-    RANKA = 0;
-    RANKB = 0;
-    RANKA = srank(b, recvA[0], 0, (recv_size-1));
-    RANKB = srank(a, recvB[0], 0, (recv_size-1));
-
-    cout << "Process " << my_rank << " RANKA: " << RANKA;
-    cout << "Process " << my_rank << " RANKB: " << RANKB;
+    merge_sort(a, b, size, my_rank, p);
+    if(results && my_rank==0){
+        cout<<"\nA:" << endl;
+        printArray(a, size);
+        cout << "\nB:"<< endl;
+        printArray(b, size);
+    }
 
 	// Shut down MPI
 	MPI_Finalize();
