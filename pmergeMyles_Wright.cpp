@@ -14,25 +14,41 @@ using namespace std;
 // mpicxx -o blah file.cpp
 // mpirun -q -np 32 blah
 
-int srank(int * arr, int x, int p, int r){ //bSearch function
-    if(p <= r){                                //x is what we are searching for //RANK is the bSearch array  //p is the partition                                    
-        int m = (p+r)/2;    //index of middle element   //r is the index of the last element of the array
-        if(arr[m] == x){
-            return m;
+int srank(int * arr, int x, int valtofine){ //MYLES: a fun binary search style algorithm that returns the value of where the value should be
+    if (n==1){
+        if(valtofind<arr[0]){
+            return 0;
         }
-        else if(arr[m] > x){
-            return srank(arr, x, p, m-1);
+        else{
+            return 1;
         }
-        else if(arr[m] < x){
-            return srank(arr, x, m+1, r);
-        }
-        
     }
     else{
-        return p;
+        if(valtofind < a[n/2]){
+            return srank(a, n/2, valtofind);
+        }
+        else{
+            return n/2 + srank(&a[n/2], n/2, valtofind);
+        }
     }
-    return -1; //there was a major issue                      
 
+}
+
+void insertionSort(int* array, int size) //CATHAL: hehe
+{
+    int k;
+    int j;
+    for (int i = 1; i < size; i++)
+    {
+        k = array[i];
+        j = i;
+        while (j > 0 && array[j - 1] > k)
+        {
+            array[j] = array[j - 1];
+            j--;
+        }
+        array[j] = k;
+    }
 }
 
 void smerge(int * a, int first, int lasta, int lastb, int * output = NULL){ //smerge function
@@ -108,7 +124,7 @@ void clear(int*a, int n){
 }
 
 void merge_sort(int*a, int*b, int n, int my_rank, int p){
-    //We have made a base for arrays less than 4 just use insertion because its better, could use another sort but I saw this one in a sort visualizer video on youtube and thought it looked cool so why not?
+    //MYLES: We have made a base for arrays less than 4 just use insertion because its better, could use another sort but I saw this one in a sort visualizer video on youtube and thought it looked cool so why not?
     if(n==4){
         for(int i = 0; i < n; i++){
             b[i] = a[i];
@@ -122,6 +138,54 @@ void merge_sort(int*a, int*b, int n, int my_rank, int p){
         merge_sort(&a[n/2], &c[n/2], n - n/2, my_rank, p);
         pmerge(&c[0], &c[n/2], &b[0], n, my_rank, p);
     }
+}
+
+void p_merge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A and B, both size n/2, into array C, size n
+{
+	int logn = log2(n/2);
+	int x = ceil((n/2)/logn);		//Number of sampled elements
+	
+	//Arrays to hold positions and ranks used to determine end points of sub arrays to merge using sequential merge
+	//lower case is used for local arrays to be filled out by individual processes and then all reduced into capital arrays
+	//i.e Allreduce(ar, AR, n, ...)
+	int* ar = new int[2*x + 2];
+	int* br = new int[2*x + 2];
+	int* Ar = new int[2*x + 2];
+	int* Br = new int[2*x + 2];
+	clear(ar,2*x+2);
+	clear(br,2*x+2);
+	clear(Ar,2*x+2);
+	clear(Br,2*x+2);
+	
+	for(int i = my_rank; i < x; i+=p){		//Fill in positions of sampled elements(in parallel)
+		ar[i] = 1 + i*logn;
+		br[i] = 1 + i*logn;
+	}		
+	for(int i = my_rank; i < x; i+=p){		//Fill in ranks of sampled elements(in parallel)
+		br[i+x] = RANK(B, n/2, A[0+i*logn]);
+		ar[i+x] = RANK(A, n/2, B[0+i*logn]);
+	}
+	MPI_Allreduce(ar, Ar, 2*x+2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);		//combine local arrays and broadcast
+	MPI_Allreduce(br, Br, 2*x+2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	
+	Ar[2*x] = 0;				//Fill in First Position(i = 0)
+	Ar[2*x + 1] = n/2;			//Fill in Last Position(i = n)
+	Br[2*x] = 0;				//Fill in First Position(i = 0)
+	Br[2*x + 1] = n/2;			//Fill in Last Position(i = n)
+	sort(Ar, 2*x+2);			//Sort these to make sure they are in order
+	sort(Br, 2*x+2);			//Sorted using insertion sort
+	
+	int* localC = new int[n];		//Local C array for the sequnetial merges performed by individual process by striping.
+	clear(localC, n);
+	
+	//Striping the sequential merges
+	for(int i = my_rank; i < 2*x+1; i+=p){
+		s_merge(A, Ar[i], Ar[i+1], B, Br[i], Br[i+1], localC, Ar[i] + Br[i], Ar[i+1]+Br[i+1] );
+	}
+	
+	//Combine each process merges into the resulting C array
+	MPI_Allreduce(localC, C, n, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	
 }
 
 
