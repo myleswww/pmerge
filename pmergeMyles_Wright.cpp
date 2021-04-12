@@ -162,8 +162,8 @@ void p_merge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A
 		br[i] = 1 + i*logn;
 	}		
 	for(int i = my_rank; i < x; i+=p){		//Fill in ranks of sampled elements(in parallel)
-		br[i+x] = RANK(B, n/2, A[0+i*logn]);
-		ar[i+x] = RANK(A, n/2, B[0+i*logn]);
+		br[i+x] = srank(B, n/2, A[0+i*logn]);
+		ar[i+x] = srank(A, n/2, B[0+i*logn]);
 	}
 	MPI_Allreduce(ar, Ar, 2*x+2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);		//combine local arrays and broadcast
 	MPI_Allreduce(br, Br, 2*x+2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
