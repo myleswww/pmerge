@@ -14,8 +14,8 @@ using namespace std;
 // mpicxx -o blah file.cpp
 // mpirun -q -np 32 blah
 
-int srank(int * arr, int x, int valtofine){ //MYLES: a fun binary search style algorithm that returns the value of where the value should be
-    if (n==1){
+int srank(int * arr, int x, int valtofind){ //MYLES: a fun binary search style algorithm that returns the value of where the value should be
+    if (x==1){
         if(valtofind<arr[0]){
             return 0;
         }
@@ -24,11 +24,11 @@ int srank(int * arr, int x, int valtofine){ //MYLES: a fun binary search style a
         }
     }
     else{
-        if(valtofind < a[n/2]){
-            return srank(a, n/2, valtofind);
+        if(valtofind < arr[x/2]){
+            return srank(arr, x/2, valtofind);
         }
         else{
-            return n/2 + srank(&a[n/2], n/2, valtofind);
+            return x/2 + srank(&arr[x/2], x/2, valtofind);
         }
     }
 
@@ -51,64 +51,21 @@ void insertionSort(int* array, int size) //CATHAL: hehe
     }
 }
 
-void smerge(int * a, int first, int lasta, int lastb, int * output = NULL){ //smerge function
-    
-    int arrA = lasta - first + 1;
-    int arrB = lastb - lasta; //size of b
-
-    //temp arrays
-    int * arrL = new int[arrA];
-    int * arrR = new int[arrB];
-
-    //copy
-    for (int i = 0; i < arrA; i++){
-        arrL[i] = a[first + i];
-    }
-    for (int j = 0; j < arrB; j++){
-        arrR[j] = a[lasta + 1 + j];
-    }
-
-    int i = 0; //index of first array
-    int j = 0; //index of second array
-    int k = first; //index of merged arrays
-
-    while(i < arrA && j < arrB){ //copy to arr
-        if(arrL[i] <= arrR[j]){
-            a[k] = arrL[i];
-            i++;    
-        }
-        else{
-            a[k] = arrR[j];
-            j++;
-        }
-        k++;
-    }
-
-    while(i < arrA){ //remaining elements of arrL[]
-        a[k] = arrL[i];
-        i++;
-        k++;
-    }
-    
-    while(j < arrB){
-        a[k] = arrR[j];
-        j++;
-        k++;
-    }
+void smerge(int* A, int a_start, int a_end, int* B, int b_start, int b_end, int* C, int c_start, int c_end)
+{
+	for(int i = c_start; i < c_end; i++)
+	{
+		//If there are elements left in A and either there are no elements left in B, 
+		//or the next A element is less than the next B element, place the next A element
+		//In the next C spot
+		if(a_start < a_end && (b_start == b_end || A[a_start] < B[b_start])){
+			C[i] = A[a_start++];
+		}
+		else{		//Else place the next B element in the next C spot
+			C[i] = B[b_start++];
+		}
+	}
 }
-
-
-void s_mergesort(int * a, int first, int last){ //mergesort. yee yee
-    if(first >= last){
-        return;
-    }
-    int p = first + (last-first)/2;
-    s_mergesort(a, first, p);
-    s_mergesort(a, p+1, last);
-    smerge(a, first, p, last);
-}
-
-
 
 void printArray(int * a, int size){
     for(int i = 0; i < size; i++){
@@ -123,24 +80,8 @@ void clear(int*a, int n){
     }
 }
 
-void merge_sort(int*a, int*b, int n, int my_rank, int p){
-    //MYLES: We have made a base for arrays less than 4 just use insertion because its better, could use another sort but I saw this one in a sort visualizer video on youtube and thought it looked cool so why not?
-    if(n==4){
-        for(int i = 0; i < n; i++){
-            b[i] = a[i];
-        }
-        insertionsort(b, n);
-    }
-    else{
-        int*c = new int[n]; //basically we are creating a temp array to store the two halfs then run mergesort recursively
-        clear(c,n);
-        merge_sort(&a[0], &c[0], n/2, my_rank, p);
-        merge_sort(&a[n/2], &c[n/2], n - n/2, my_rank, p);
-        pmerge(&c[0], &c[n/2], &b[0], n, my_rank, p);
-    }
-}
 
-void p_merge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A and B, both size n/2, into array C, size n
+void pmerge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A and B, both size n/2, into array C, size n
 {
 	int logn = log2(n/2);
 	int x = ceil((n/2)/logn);		//Number of sampled elements
@@ -172,15 +113,15 @@ void p_merge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A
 	Ar[2*x + 1] = n/2;			//Fill in Last Position(i = n)
 	Br[2*x] = 0;				//Fill in First Position(i = 0)
 	Br[2*x + 1] = n/2;			//Fill in Last Position(i = n)
-	sort(Ar, 2*x+2);			//Sort these to make sure they are in order
-	sort(Br, 2*x+2);			//Sorted using insertion sort
+	insertionSort(Ar, 2*x+2);			//Sort these to make sure they are in order
+	insertionSort(Br, 2*x+2);			//Sorted using insertion sort
 	
 	int* localC = new int[n];		//Local C array for the sequnetial merges performed by individual process by striping.
 	clear(localC, n);
 	
 	//Striping the sequential merges
 	for(int i = my_rank; i < 2*x+1; i+=p){
-		s_merge(A, Ar[i], Ar[i+1], B, Br[i], Br[i+1], localC, Ar[i] + Br[i], Ar[i+1]+Br[i+1] );
+		smerge(A, Ar[i], Ar[i+1], B, Br[i], Br[i+1], localC, Ar[i] + Br[i], Ar[i+1]+Br[i+1] );
 	}
 	
 	//Combine each process merges into the resulting C array
@@ -188,6 +129,22 @@ void p_merge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A
 	
 }
 
+void merge_sort(int*a, int*b, int n, int my_rank, int p){
+    //MYLES: We have made a base for arrays less than 4 just use insertion because its better, could use another sort but I saw this one in a sort visualizer video on youtube and thought it looked cool so why not?
+    if(n==4){
+        for(int i = 0; i < n; i++){
+            b[i] = a[i];
+        }
+        insertionSort(b, n);
+    }
+    else{
+        int*c = new int[n]; //basically we are creating a temp array to store the two halfs then run mergesort recursively
+        clear(c,n);
+        merge_sort(&a[0], &c[0], n/2, my_rank, p);
+        merge_sort(&a[n/2], &c[n/2], n - n/2, my_rank, p);
+        pmerge(&c[0], &c[n/2], &b[0], n, my_rank, p);
+    }
+}
 
 int main(int argc, char * argv[]) {
 
