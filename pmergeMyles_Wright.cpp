@@ -15,6 +15,7 @@ using namespace std;
 // mpirun -q -np 32 blah
 
 int srank(int * arr, int x, int valtofind){ //MYLES: a fun binary search style algorithm that returns the value of where the value should be
+    cout << "inside of srank" << endl;
     if (x==1){
         if(valtofind<arr[0]){
             return 0;
@@ -34,8 +35,8 @@ int srank(int * arr, int x, int valtofind){ //MYLES: a fun binary search style a
 
 }
 
-void insertionSort(int* array, int size) //CATHAL: hehe
-{
+void insertionSort(int* array, int size){//CATHAL: hehe
+    cout << "inside insertion" << endl;
     int k;
     int j;
     for (int i = 1; i < size; i++)
@@ -53,6 +54,7 @@ void insertionSort(int* array, int size) //CATHAL: hehe
 
 void smerge(int* A, int a_start, int a_end, int* B, int b_start, int b_end, int* C, int c_start, int c_end)
 {
+    cout << "Inside of smerge" << endl;
 	for(int i = c_start; i < c_end; i++)
 	{
 		//If there are elements left in A and either there are no elements left in B, 
@@ -83,6 +85,7 @@ void clear(int*a, int n){
 
 void pmerge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A and B, both size n/2, into array C, size n
 {
+    cout << "inside of pmerge" << endl;
 	int logn = log2(n/2);
 	int x = ceil((n/2)/logn);		//Number of sampled elements
 	
@@ -97,40 +100,54 @@ void pmerge(int* A, int* B, int* C, int n, int my_rank, int p)		//Merge Array A 
 	clear(br,2*x+2);
 	clear(Ar,2*x+2);
 	clear(Br,2*x+2);
-	
+	cout << "Test"<< endl;
 	for(int i = my_rank; i < x; i+=p){		//Fill in positions of sampled elements(in parallel)
 		ar[i] = 1 + i*logn;
 		br[i] = 1 + i*logn;
-	}		
-	for(int i = my_rank; i < x; i+=p){		//Fill in ranks of sampled elements(in parallel)
-		br[i+x] = srank(B, n/2, A[0+i*logn]);
-		ar[i+x] = srank(A, n/2, B[0+i*logn]);
 	}
+    cout << "test 2" << endl;		
+	for(int i = my_rank; i < x; i+=p){
+        cout << "going to srank ONE" << endl;		//Fill in ranks of sampled elements(in parallel)
+		br[i+x] = srank(B, n/2, A[0+i*logn]);
+        cout << "going to srank TWO" << endl;
+		ar[i+x] = srank(A, n/2, B[0+i*logn]);
+        cout << "done with srank" << endl;
+	}
+    cout << "Test 3" << endl;
 	MPI_Allreduce(ar, Ar, 2*x+2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);		//combine local arrays and broadcast
+    cout << "Allreduce 1 done" << endl;
 	MPI_Allreduce(br, Br, 2*x+2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-	
+	cout << "Allreduce done" << endl;
 	Ar[2*x] = 0;				//Fill in First Position(i = 0)
 	Ar[2*x + 1] = n/2;			//Fill in Last Position(i = n)
 	Br[2*x] = 0;				//Fill in First Position(i = 0)
 	Br[2*x + 1] = n/2;			//Fill in Last Position(i = n)
+    cout << "rank arrays before sort: " << endl;
+    printArray(Ar, 2*x);
+    printArray(Br, 2*x);
 	insertionSort(Ar, 2*x+2);			//Sort these to make sure they are in order
 	insertionSort(Br, 2*x+2);			//Sorted using insertion sort
-	
+	cout << "rank arrays after sort: " << endl;
+    printArray(Ar, 2*x);
+    printArray(Br, 2*x);
 	int* localC = new int[n];		//Local C array for the sequnetial merges performed by individual process by striping.
 	clear(localC, n);
 	
 	//Striping the sequential merges
 	for(int i = my_rank; i < 2*x+1; i+=p){
-		smerge(A, Ar[i], Ar[i+1], B, Br[i], Br[i+1], localC, Ar[i] + Br[i], Ar[i+1]+Br[i+1] );
+		smerge(A, Ar[i], Ar[i+1], B, Br[i], Br[i+1], localC, Ar[i] + Br[i], Ar[i+1]+Br[i+1]);
 	}
 	
 	//Combine each process merges into the resulting C array
 	MPI_Allreduce(localC, C, n, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    cout << "array C:" << endl;
+    printArray(C, n);
 	
 }
 
 void merge_sort(int*a, int*b, int n, int my_rank, int p){
     //MYLES: We have made a base for arrays less than 4 just use insertion because its better, could use another sort but I saw this one in a sort visualizer video on youtube and thought it looked cool so why not?
+    cout << "Inside of merge_sort" << endl;
     if(n==4){
         for(int i = 0; i < n; i++){
             b[i] = a[i];
@@ -172,7 +189,6 @@ int main(int argc, char * argv[]) {
     int * WIN; int * recvA; int * recvB;              //MYLES: Create global arrays
     
     int size;
-    bool results = true;
 
 	// THE REAL PROGRAM IS HERE
     if(my_rank == 0){ //MYLES: create and broadcast the array
@@ -185,17 +201,21 @@ int main(int argc, char * argv[]) {
         int size_div = size/2;
         a = &input[0];
         b = &input[size_div]; //MYLES: cut this hoe in half
-
+        cout << "array A:" << endl;
+        printArray(a, size_div);
+        cout << "array B:" << endl;
+        printArray(b, size_div);
         
     }
     
     MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(a, (size/2), MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(b, size/2, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
     
+    cout << "boots withthe fur" << endl;
     merge_sort(a, b, size, my_rank, p);
-    if(results && my_rank==0){
+    cout << "ASS" << endl;
+    if(my_rank==0){
         cout<<"\nA:" << endl;
         printArray(a, size);
         cout << "\nB:"<< endl;
